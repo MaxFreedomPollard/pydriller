@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from pydriller.git import Git
 from pydriller.repository import Repository
+from pydriller.utils.conf import Conf
 from datetime import datetime, timezone, timedelta
 import logging
 import pytest
@@ -194,6 +196,22 @@ def test_from_and_to_commit_with_merge_commit(repository_mining_cc_complex, expe
 def test_from_and_to_commit_with_dates_out_of_order(path, from_commit, to_commit, expected_commits):
     commits = Repository(path, from_commit=from_commit, to_commit=to_commit).traverse_commits()
     assert [commit.hash for commit in commits] == expected_commits
+
+
+# In branches_merged, 8169f76 and 8986af2 are on different branches, so neither
+# is an ancestor of the other and the dates decide the order: 8169f76 is older.
+@pytest.mark.parametrize('from_commit,to_commit', [
+    ('8169f76a3d7add54b4fc7bca7160d1f1eede6eda', '8986af2a679759e5a15794f6d56e6d46c3f302f1'),
+    ('8986af2a679759e5a15794f6d56e6d46c3f302f1', '8169f76a3d7add54b4fc7bca7160d1f1eede6eda'),
+])
+def test_from_and_to_commit_on_different_branches(from_commit, to_commit):
+    path = 'test-repos/branches_merged/'
+    git = Git(path)
+    conf = Conf({'path_to_repo': path, 'git': git, 'from_commit': from_commit, 'to_commit': to_commit})
+    conf.sanity_check_filters()
+    git.clear()
+    assert conf.get('from_commit') == '8169f76a3d7add54b4fc7bca7160d1f1eede6eda'
+    assert conf.get('to_commit') == '8986af2a679759e5a15794f6d56e6d46c3f302f1'
 
 
 # FROM AND TO TAG
